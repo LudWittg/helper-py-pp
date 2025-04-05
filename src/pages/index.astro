@@ -1,5 +1,5 @@
 ---
-import Layout from '../layouts/Layout.astro'; // Optional if you're using a layout
+import Layout from "../layouts/Layout.astro"; // Optional if you're using a layout
 ---
 
 <html lang="en">
@@ -11,7 +11,9 @@ import Layout from '../layouts/Layout.astro'; // Optional if you're using a layo
   <body>
     <h1>🐍 Pyodide in Astro</h1>
 
-    <textarea id="python-input" rows="6" cols="60">print("Hello from Python!")</textarea>
+    <textarea id="python-input" rows="6" cols="60"
+      >print("Hello from Python!")</textarea
+    >
     <br />
     <button id="run-btn">Run Python</button>
 
@@ -34,8 +36,20 @@ import Layout from '../layouts/Layout.astro'; // Optional if you're using a layo
         runBtn.onclick = async () => {
           const code = inputEl.value;
           try {
-            const result = pyodide.runPython(code);
-            outputEl.textContent = result.toString();
+            let capturedOutput = "";
+            pyodide.setStdout({ batched: (text) => (capturedOutput += '\n' + text) });
+            pyodide.setStderr({
+              batched: (text) => (capturedOutput += "Error: " + text),
+            });
+
+            let result;
+            try {
+              result = pyodide.runPython(code);
+              outputEl.textContent =
+                capturedOutput || result?.toString() || "No output";
+            } catch (err) {
+              outputEl.textContent = "Runtime error: " + err;
+            }
           } catch (err) {
             outputEl.textContent = "Error: " + err;
           }
