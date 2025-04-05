@@ -1,24 +1,47 @@
 ---
-import Layout from "../layouts/Layout.astro"; // Optional if you're using a layout
+
 ---
 
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Astro + Pyodide</title>
+    <title>Astro + Pyodide + Z3</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2rem;
+      }
+      textarea {
+        width: 100%;
+        max-width: 600px;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 1rem;
+      }
+    </style>
   </head>
   <body>
-    <h1>🐍 Pyodide in Astro</h1>
+    <h1>Astro + Pyodide + Z3 Example</h1>
+    <p>
+      This example loads Pyodide, then installs a Z3 wheel that was built using
+      the build configuration from the <a
+        href="https://github.com/Z3Prover/z3/blob/master/.github/workflows/pyodide.yml"
+        target="_blank"
+        rel="noreferrer">pyodide.yml workflow</a
+      > (which sets CFLAGS and LDFLAGS appropriately), and finally runs some Z3 code.
+    </p>
 
-    <textarea id="python-input" rows="6" cols="60"
-      >print("Hello from Python!")</textarea
-    >
+    <p>Enter your Python code below:</p>
+    <textarea id="python-input" rows="8" cols="60">
+      from z3 import * x = Int('x') s = Solver() s.add(x > 2, x < 5)
+      print(s.check()) print(s.model())
+    </textarea>
     <br />
     <button id="run-btn">Run Python</button>
-
     <h2>Output:</h2>
-    <pre id="output">Loading Pyodide...</pre>
+    <pre id="output">Loading Pyodide and Z3...</pre>
 
     <script type="module">
       async function main() {
@@ -26,37 +49,41 @@ import Layout from "../layouts/Layout.astro"; // Optional if you're using a layo
         const runBtn = document.getElementById("run-btn");
         const inputEl = document.getElementById("python-input");
 
-        // Load Pyodide from your local server
-        const pyodide = await loadPyodide({
-          indexURL: "/pyodide/",
-        });
+        // Load Pyodide from your local '/pyodide/' folder.
+        const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
+        outputEl.textContent = "Pyodide loaded. Installing Z3...";
 
-        outputEl.textContent = "Pyodide is ready!";
+        // Load micropip to allow installation of Python wheels.
+        await pyodide.loadPackage("micropip");
+        // Install the Z3 wheel.
+        // (This wheel should have been built with the proper build flags—see the pyodide.yml workflow in Z3's repo.)
+        await pyodide.runPythonAsync(`
+          import micropip
+          # Replace the URL below with your hosted Z3 wheel URL.
+          await micropip.install("https://microsoft.github.io/z3guide/z3_solver-4.13.4.0-py3-none-pyodide_2024_0_wasm32.whl")
+          await micropip.install("numpy")
+        `);
+        outputEl.textContent = "Z3 installed! Ready to run Python code.";
 
         runBtn.onclick = async () => {
-          const code = inputEl.value;
+          let capturedOutput = "";
+          pyodide.setStdout({ batched: (text) => (capturedOutput += '\n' + text) });
+          pyodide.setStderr({
+            batched: (text) => (capturedOutput += "Error: " + text),
+          });
           try {
-            let capturedOutput = "";
-            pyodide.setStdout({ batched: (text) => (capturedOutput += '\n' + text) });
-            pyodide.setStderr({
-              batched: (text) => (capturedOutput += "Error: " + text),
-            });
-
-            let result;
-            try {
-              result = pyodide.runPython(code);
-              outputEl.textContent =
-                capturedOutput || result?.toString() || "No output";
-            } catch (err) {
-              outputEl.textContent = "Runtime error: " + err;
-            }
+            // Execute the code from the textarea.
+            const result = await pyodide.runPythonAsync(inputEl.value);
+            outputEl.textContent =
+              capturedOutput ||
+              (result !== undefined ? result.toString() : "No output");
           } catch (err) {
-            outputEl.textContent = "Error: " + err;
+            outputEl.textContent = "Runtime error: " + err;
           }
         };
       }
 
-      // Inject pyodide.js dynamically if needed
+      // Dynamically load pyodide.js from your '/pyodide/' folder.
       const script = document.createElement("script");
       script.src = "/pyodide/pyodide.js";
       script.onload = main;
