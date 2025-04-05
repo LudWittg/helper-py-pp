@@ -1,11 +1,52 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Layout from '../layouts/Layout.astro'; // Optional if you're using a layout
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Astro + Pyodide</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <h1>🐍 Pyodide in Astro</h1>
+
+    <textarea id="python-input" rows="6" cols="60">print("Hello from Python!")</textarea>
+    <br />
+    <button id="run-btn">Run Python</button>
+
+    <h2>Output:</h2>
+    <pre id="output">Loading Pyodide...</pre>
+
+    <script type="module">
+      async function main() {
+        const outputEl = document.getElementById("output");
+        const runBtn = document.getElementById("run-btn");
+        const inputEl = document.getElementById("python-input");
+
+        // Load Pyodide from your local server
+        const pyodide = await loadPyodide({
+          indexURL: "/pyodide/",
+        });
+
+        outputEl.textContent = "Pyodide is ready!";
+
+        runBtn.onclick = async () => {
+          const code = inputEl.value;
+          try {
+            const result = pyodide.runPython(code);
+            outputEl.textContent = result.toString();
+          } catch (err) {
+            outputEl.textContent = "Error: " + err;
+          }
+        };
+      }
+
+      // Inject pyodide.js dynamically if needed
+      const script = document.createElement("script");
+      script.src = "/pyodide/pyodide.js";
+      script.onload = main;
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
