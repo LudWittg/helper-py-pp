@@ -35,8 +35,9 @@
 
     <p>Enter your Python code below:</p>
     <textarea id="python-input" rows="8" cols="60">
-      from z3 import * x = Int('x') s = Solver() s.add(x > 2, x < 5)
-      print(s.check()) print(s.model())
+# Example Python code using Z3
+from z3 import *
+import numpy as np
     </textarea>
     <br />
     <button id="run-btn">Run Python</button>
@@ -48,9 +49,15 @@
         const outputEl = document.getElementById("output");
         const runButton = document.getElementById("run-btn");
         const inputEl = document.getElementById("python-input");
+
+        // Disable the button until Pyodide is loaded
+        runButton.disabled = true;
+
+        // Load Pyodide from the /public/pyodide/ folder
         outputEl.textContent = "Loading Pyodide...";
         const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
         outputEl.textContent = "Pyodide loaded. Installing Z3 and numpy...";
+
         // Load micropip to allow installation of Python wheels.
         await pyodide.loadPackage("micropip");
         // Install the Z3 wheel.
@@ -64,9 +71,31 @@
           await micropip.install("${wheelURL}")
           await micropip.install("numpy")
         `);
-        outputEl.textContent = "Z3 installed! Ready to run Python code.";
+        outputEl.textContent = "Z3 installed! Fetching example code...";
+        runButton.disabled = false;
 
-        runButton.onclick = async () => {
+        // Fetch the Python code from the public folder. Check if the file exists.
+        // If it doesn't, log an error message to the console.
+        fetch("/example.py")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.text();
+          })
+          .then((code) => {
+            // Set the textarea value to the fetched code and display a message.
+            inputEl.value = code;
+            outputEl.textContent = "Python code loaded. Ready to run.";
+            // Run the code immediately after the fetching is done.
+            runCode();
+          })
+          .catch((err) => {
+            console.error("Error loading Python code:", err);
+            outputEl.textContent = "Error loading Python code: " + err.message;
+          });
+        
+        const runCode = async () => {
           // Set up stdout and stderr redirection to capture output.
           let capturedOutput = "";
           pyodide.setStdout({
@@ -87,6 +116,8 @@
             outputEl.textContent = "Runtime error: " + err;
           }
         };
+
+        runButton.onclick = runCode;
       }
 
       // Dynamically load pyodide.js from your '/pyodide/' folder.
