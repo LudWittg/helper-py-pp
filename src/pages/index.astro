@@ -7,6 +7,7 @@
     <meta charset="UTF-8" />
     <title>Astro + Pyodide + Z3</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"></script>
     <style>
       body {
         font-family: sans-serif;
@@ -55,7 +56,9 @@ import numpy as np
 
         // Load Pyodide from the /public/pyodide/ folder
         outputEl.textContent = "Loading Pyodide...";
-        const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
+        // Use the following line if you want to load a local version of Pyodide
+        //const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
+        const pyodide = await loadPyodide();
         outputEl.textContent = "Pyodide loaded. Installing Z3 and numpy...";
 
         // Load micropip to allow installation of Python wheels.
