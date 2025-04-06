@@ -79,7 +79,7 @@ import numpy as np
 
         // Fetch the Python code from the public folder. Check if the file exists.
         // If it doesn't, log an error message to the console.
-        fetch("/example.py")
+        fetch("/python_code/example2.py")
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! Status: ${response.status}`);
