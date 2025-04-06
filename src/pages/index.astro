@@ -46,32 +46,38 @@
     <script type="module">
       async function main() {
         const outputEl = document.getElementById("output");
-        const runBtn = document.getElementById("run-btn");
+        const runButton = document.getElementById("run-btn");
         const inputEl = document.getElementById("python-input");
-
-        // Load Pyodide from your local '/pyodide/' folder.
+        outputEl.textContent = "Loading Pyodide...";
         const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
-        outputEl.textContent = "Pyodide loaded. Installing Z3...";
-
+        outputEl.textContent = "Pyodide loaded. Installing Z3 and numpy...";
         // Load micropip to allow installation of Python wheels.
         await pyodide.loadPackage("micropip");
         // Install the Z3 wheel.
-        // (This wheel should have been built with the proper build flags—see the pyodide.yml workflow in Z3's repo.)
+        // (It should be built according to the pyodide.yml workflow in Z3's repo)
+        // Using wheel from https://microsoft.github.io/z3guide/z3_solver-4.13.4.0-py3-none-pyodide_2024_0_wasm32.whl
+        const wheelURL =
+          window.location.origin +
+          "/z3_solver-4.13.4.0-py3-none-pyodide_2024_0_wasm32.whl";
         await pyodide.runPythonAsync(`
           import micropip
-          # Replace the URL below with your hosted Z3 wheel URL.
-          await micropip.install("https://microsoft.github.io/z3guide/z3_solver-4.13.4.0-py3-none-pyodide_2024_0_wasm32.whl")
+          await micropip.install("${wheelURL}")
           await micropip.install("numpy")
         `);
         outputEl.textContent = "Z3 installed! Ready to run Python code.";
 
-        runBtn.onclick = async () => {
+        runButton.onclick = async () => {
+          // Set up stdout and stderr redirection to capture output.
           let capturedOutput = "";
-          pyodide.setStdout({ batched: (text) => (capturedOutput += '\n' + text) });
+          pyodide.setStdout({
+            batched: (text) => (capturedOutput += "\n" + text),
+          });
           pyodide.setStderr({
             batched: (text) => (capturedOutput += "Error: " + text),
           });
+
           try {
+            outputEl.textContent = "Running Python code...";
             // Execute the code from the textarea.
             const result = await pyodide.runPythonAsync(inputEl.value);
             outputEl.textContent =
